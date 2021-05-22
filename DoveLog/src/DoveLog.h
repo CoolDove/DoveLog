@@ -4,8 +4,8 @@
 #include <vector>
 #include <unordered_map>
 
-#define DLOG_INIT Dove::LogManager::GetInstance()
-#define DLOG_CLOSE delete Dove::LogManager::GetInstance()
+#define DLOG_INIT Dove::LogManager::GetInstance();if(Dove::OnInit!=nullptr)Dove::OnInit()
+#define DLOG_CLOSE if(Dove::OnClose!=nullptr)Dove::OnClose();delete Dove::LogManager::GetInstance()
 
 #define DLOG_ERROR(...) {char buff[256];\
 sprintf_s(buff, __VA_ARGS__);\
@@ -28,7 +28,6 @@ Dove::LogManager::GetInstance()->PushMsg({Dove::LogType::DLT_TRACE,buff,__FILE__
 #define DLOG_ON_CLOSE Dove::OnClose
 
 namespace Dove {
-
 	using DMSG_FLAG = unsigned char;
 	extern DMSG_FLAG DMSG_FLAG_TYPE;
 	extern DMSG_FLAG DMSG_FLAG_CONTENT;
