@@ -6,62 +6,62 @@
 #include <mutex>
 
 #define DLOG_INIT                    \
-	Dove::LogManager::GetInstance(); \
-	if (Dove::OnInit != nullptr)     \
-	Dove::OnInit()
+	Dove::LogManager::get(); \
+	if (Dove::on_init != nullptr)     \
+		Dove::on_init()
 #define DLOG_CLOSE                \
-	if (Dove::OnClose != nullptr) \
-		Dove::OnClose();          \
-	delete Dove::LogManager::GetInstance()
+	if (Dove::on_close != nullptr) \
+		Dove::on_close();          \
+	delete Dove::LogManager::get()
 
 #define DLOG_ERROR(...)                                                                                     \
 	{                                                                                                       \
 		char buff[256];                                                                                     \
 		sprintf_s(buff, __VA_ARGS__);                                                                       \
-		Dove::g_dlog_instance->PushMsg({Dove::LogType::DLT_ERROR, buff, __FILE__, __FUNCTION__, __LINE__}); \
+		Dove::LogManager::get()->push_msg({Dove::LogType::DLT_ERROR, buff, __FILE__, __FUNCTION__, __LINE__}); \
 	}
 #define DLOG_WARN(...)                                                                                     \
 	{                                                                                                      \
 		char buff[256];                                                                                    \
 		sprintf_s(buff, __VA_ARGS__);                                                                      \
-		Dove::g_dlog_instance->PushMsg({Dove::LogType::DLT_WARN, buff, __FILE__, __FUNCTION__, __LINE__}); \
+		Dove::LogManager::get()->push_msg({Dove::LogType::DLT_WARN, buff, __FILE__, __FUNCTION__, __LINE__}); \
 	}
 #define DLOG_INFO(...)                                                                                     \
 	{                                                                                                      \
 		char buff[256];                                                                                    \
 		sprintf_s(buff, __VA_ARGS__);                                                                      \
-		Dove::g_dlog_instance->PushMsg({Dove::LogType::DLT_INFO, buff, __FILE__, __FUNCTION__, __LINE__}); \
+		Dove::LogManager::get()->push_msg({Dove::LogType::DLT_INFO, buff, __FILE__, __FUNCTION__, __LINE__}); \
 	}
 #define DLOG_DEBUG(...)                                                                                     \
 	{                                                                                                       \
 		char buff[256];                                                                                     \
 		sprintf_s(buff, __VA_ARGS__);                                                                       \
-		Dove::g_dlog_instance->PushMsg({Dove::LogType::DLT_DEBUG, buff, __FILE__, __FUNCTION__, __LINE__}); \
+		Dove::LogManager::get()->push_msg({Dove::LogType::DLT_DEBUG, buff, __FILE__, __FUNCTION__, __LINE__}); \
 	}
 #define DLOG_TRACE(...)                                                                                     \
 	{                                                                                                       \
 		char buff[256];                                                                                     \
 		sprintf_s(buff, __VA_ARGS__);                                                                       \
-		Dove::g_dlog_instance->PushMsg({Dove::LogType::DLT_TRACE, buff, __FILE__, __FUNCTION__, __LINE__}); \
+		Dove::LogManager::get()->push_msg({Dove::LogType::DLT_TRACE, buff, __FILE__, __FUNCTION__, __LINE__}); \
 	}
 
-#define DLOG_ON_PUSH Dove::OnPushMsg
-#define DLOG_ON_INIT Dove::OnInit
-#define DLOG_ON_CLOSE Dove::OnClose
+#define DLOG_ON_PUSH Dove::on_push_msg
+#define DLOG_ON_INIT Dove::on_init
+#define DLOG_ON_CLOSE Dove::on_close
 
 namespace Dove
 {
 	using DMSG_FLAG = unsigned char;
-	inline DMSG_FLAG DMSG_FLAG_TYPE = 1 << 0;
-	inline DMSG_FLAG DMSG_FLAG_CONTENT = 1 << 1;
-	inline DMSG_FLAG DMSG_FLAG_FILE = 1 << 2;
-	inline DMSG_FLAG DMSG_FLAG_FUNC = 1 << 3;
-	inline DMSG_FLAG DMSG_FLAG_LINE = 1 << 4;
+	const inline DMSG_FLAG DMSG_FLAG_TYPE    = 1 << 0;
+	const inline DMSG_FLAG DMSG_FLAG_CONTENT = 1 << 1;
+	const inline DMSG_FLAG DMSG_FLAG_FILE    = 1 << 2;
+	const inline DMSG_FLAG DMSG_FLAG_FUNC    = 1 << 3;
+	const inline DMSG_FLAG DMSG_FLAG_LINE    = 1 << 4;
 
-	inline DMSG_FLAG DMSG_FLAG_SIMPLE = 1 << 0 | 1 << 1;
-	inline DMSG_FLAG DMSG_FLAG_ALL = 0xFF;
+	const inline DMSG_FLAG DMSG_FLAG_SIMPLE  = 1 << 0 | 1 << 1;
+	const inline DMSG_FLAG DMSG_FLAG_ALL     = 0xFF;
 
-	inline std::string LogTypes[5] = {
+	const static inline std::string g_log_types[5] = {
 		"ERROR",
 		"WARN",
 		"INFO",
@@ -69,12 +69,11 @@ namespace Dove
 		"TRACE"
 	};
 
-
 	enum class LogType : unsigned char
 	{
 		DLT_ERROR = 0,
-		DLT_WARN = 1,
-		DLT_INFO = 2,
+		DLT_WARN  = 1,
+		DLT_INFO  = 2,
 		DLT_DEBUG = 3,
 		DLT_TRACE = 4
 	};
@@ -86,101 +85,96 @@ namespace Dove
 		std::string File;
 		std::string Function;
 		long Line;
+
+		std::string to_string(DMSG_FLAG _flag = Dove::DMSG_FLAG_SIMPLE) const
+		{
+			std::string str = "";
+			if (_flag & DMSG_FLAG_TYPE)
+				str.append(g_log_types[(unsigned char)Type] + ":");
+			if (_flag & DMSG_FLAG_CONTENT)
+				str.append("\t" + Content);
+			if (_flag & DMSG_FLAG_FILE)
+				str.append(" -<" + File + "> ");
+			if (_flag & DMSG_FLAG_FUNC)
+				str.append(" -function: " + this->Function);
+			if (_flag & DMSG_FLAG_LINE)
+				str.append(" -line: " + std::to_string(Line));
+			return str;
+		};
 	};
 
-	using CallBackOnPushMsg = void (*)(LogMsg);
+	using CallBackOnPushMsg = void (*)(const LogMsg&);
 	using CallBackOnInit = void (*)();
 	using CallBackOnClose = void (*)();
 
-	inline CallBackOnPushMsg OnPushMsg = nullptr;
-	inline CallBackOnInit OnInit = nullptr;
-	inline CallBackOnClose OnClose = nullptr;
-
-
-	inline std::string msg_to_string(const LogMsg& msg, DMSG_FLAG flag = Dove::DMSG_FLAG_SIMPLE)
-	{
-		std::string str = "";
-		if (flag & DMSG_FLAG_TYPE)
-			str.append(LogTypes[(unsigned char)msg.Type] + ":");
-		if (flag & DMSG_FLAG_CONTENT)
-			str.append("\t" + msg.Content);
-		if (flag & DMSG_FLAG_FILE)
-			str.append(" -<" + msg.File + "> ");
-		if (flag & DMSG_FLAG_FUNC)
-			str.append(" -function: " + msg.Function);
-		if (flag & DMSG_FLAG_LINE)
-			str.append(" -line: " + std::to_string(msg.Line));
-		return str;
-	};
-
-	class LogManager;
-	inline LogManager* g_dlog_instance = nullptr;
+	inline CallBackOnPushMsg on_push_msg = nullptr;
+	inline CallBackOnInit on_init = nullptr;
+	inline CallBackOnClose on_close = nullptr;
 
 	class LogManager
 	{
 	private:
 		LogManager()
 		{
-			msgs.reserve(100);
-			typedMsgs.reserve(100);
+			m_msgs.reserve(100);
+			m_msgs_by_type.reserve(100);
 		}
-
 	public:
 		~LogManager()
 		{
-			g_dlog_instance = nullptr;
+			ms_instance = nullptr;
 		}
-		static LogManager *GetInstance()
+		static LogManager* get()
 		{
-			if (g_dlog_instance == nullptr)
-			{
-				g_dlog_instance = new LogManager();
-			}
-			return g_dlog_instance;
+			if (ms_instance == nullptr)
+				ms_instance = new LogManager();
+			
+			return ms_instance;
 		}
 
 	public:
-		std::vector<LogMsg> &GetLogMsgs() { return msgs; }
-		std::vector<LogMsg *> &GetTypedMsgs(const LogType &type) { return typedMsgs[type]; };
-		LogMsg *PushMsg(LogMsg msg)
+		static LogManager* ms_instance;
+		std::vector<LogMsg>& get_log_msgs() noexcept { return m_msgs; }
+		std::vector<LogMsg*>& get_msgs_by_type(const LogType& _type) noexcept { return m_msgs_by_type[_type]; };
+		LogMsg *push_msg(const LogMsg& _msg) noexcept
 		{
 			static std::mutex mtx;
 			mtx.lock();
 
-			if (msgs.capacity() == (msgs.size() + 1))
-				msgs.reserve(msgs.capacity() + 300);
-			if (typedMsgs[msg.Type].capacity() == (typedMsgs.size() + 1))
-				typedMsgs.reserve(typedMsgs[msg.Type].capacity() + 300);
+			if (m_msgs.capacity() == (m_msgs.size() + 1))
+				m_msgs.reserve(m_msgs.capacity() + 300);
+			if (m_msgs_by_type[_msg.Type].capacity() == (m_msgs_by_type.size() + 1))
+				m_msgs_by_type.reserve(m_msgs_by_type[_msg.Type].capacity() + 300);
 
-			msgs.emplace_back(msg);
-			typedMsgs[msg.Type].emplace_back(&msgs[msgs.size() - 1]);
+			m_msgs.emplace_back(_msg);
+			m_msgs_by_type[_msg.Type].emplace_back(&m_msgs[m_msgs.size() - 1]);
 
-			if (OnPushMsg != nullptr)
-				OnPushMsg(msg);
+			if (on_push_msg != nullptr)
+				on_push_msg(_msg);
 
-			LogMsg *pushedMsg = &msgs[msgs.size() - 1];
+			LogMsg *pushed_msg = &m_msgs[m_msgs.size() - 1];
 
 			mtx.unlock();
-			return pushedMsg;
+			return pushed_msg;
 		}
 
 	private:
-		//static LogManager *Instance;
-		std::vector<LogMsg> msgs;
-		std::unordered_map<LogType, std::vector<LogMsg *>> typedMsgs;
+		std::vector<LogMsg> m_msgs;
+		std::unordered_map<LogType, std::vector<LogMsg*>> m_msgs_by_type;
 	};
 
-	inline LogManager *DLOG_GET_MANAGER()
-	{
-		return Dove::LogManager::GetInstance();
-	};
-	inline std::vector<LogMsg> &DLOG_GET_MSGS()
-	{
-		return Dove::LogManager::GetInstance()->GetLogMsgs();
-	};
-	inline std::vector<LogMsg *> &DLOG_GET_MSGS_TYPED(const LogType &type)
-	{
-		return Dove::LogManager::GetInstance()->GetTypedMsgs(type);
-	};
-
+	inline LogManager* LogManager::ms_instance = nullptr;
 }
+
+inline Dove::LogManager* DLOG_GET_MANAGER()
+{
+	return Dove::LogManager::get();
+};
+inline std::vector<Dove::LogMsg>& DLOG_GET_MSGS()
+{
+	return Dove::LogManager::get()->get_log_msgs();
+};
+inline std::vector<Dove::LogMsg*>& DLOG_GET_MSGS_BY_TYPE(const Dove::LogType& _type)
+{
+	return Dove::LogManager::get()->get_msgs_by_type(_type);
+};
