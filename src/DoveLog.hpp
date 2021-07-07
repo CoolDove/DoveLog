@@ -2,7 +2,6 @@
 #include <stdio.h>
 #include <string>
 #include <list>
-// #include <vector>
 #include <unordered_map>
 #include <mutex>
 
@@ -116,8 +115,6 @@ namespace Dove
 	private:
 		LogManager()
 		{
-			// m_msgs.reserve(100);
-			// m_msgs_by_type.reserve(100);
 		}
 
 	public:
@@ -144,7 +141,7 @@ namespace Dove
 
 			m_msgs.emplace_back(_msg);
 
-			LogMsg* pushed_msg = &m_msgs.back();
+			LogMsg *pushed_msg = &m_msgs.back();
 			m_msgs_by_type[_msg.Type].push_back(pushed_msg);
 
 			if (on_push_msg != nullptr)
